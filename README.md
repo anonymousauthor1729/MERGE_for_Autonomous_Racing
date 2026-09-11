@@ -77,7 +77,7 @@ Simulation and verification environment built around the F1TENTH Gym ecosystem.
 
 ### `MERGE_VS_IMITATION_LEARNING`
 
-Benchmark suite for comparing MERGE with imitation-learning baselines.
+Benchmark suite for comparing MERGE with imitation-learning baselines: Behavior Cloning, ILEED and PACER.
 
 Evaluation includes:
 
@@ -204,16 +204,11 @@ MERGE trajectory synthesis is performed offline. Online execution tracks the res
 
 Each demonstration is transformed from
 
-$
-\tau_i(t)
-$
+$\tau_i(t)$
 
 to a spatial representation
 
-$
-\tau_i(s)=\{X_i(s),v_i(s)\},
-\qquad s\in[0,1].
-$
+$\tau_i(s)=\{X_i(s),v_i(s)\}, \qquad s\in[0,1].$
 
 This allows demonstrations with different speeds and execution times to be compared in a common spatial coordinate system.
 
@@ -221,11 +216,7 @@ This allows demonstrations with different speeds and execution times to be compa
 
 MERGE constructs progress-dependent variance features and fits a $K$-component GMM. The posterior responsibility
 
-$
-\gamma_k(s) =
-\frac{\pi_k p(s|k)}
-{\sum_j\pi_jp(s|j)}
-$
+$\gamma_k(s) = \frac{\pi_k p(s|k)}{\sum_j\pi_jp(s|j)}$
 
 provides smooth regime membership and blending weights.
 
@@ -235,17 +226,7 @@ For consecutive regimes, MERGE evaluates transition-level spatial and accelerati
 
 The optimal expert sequence is obtained through Bellman recursion:
 
-$
-DP(k,i)=
-\max_j
-\left[
-DP(k-1,j)
-+
-R_{e,k}^{(j\rightarrow i)}
-+
-R_{a,k}^{(j\rightarrow i)}
-\right].
-$
+$DP(k,i)=\max_j\left[DP(k-1,j)+R_{e,k}^{(j\rightarrow i)}+R_{a,k}^{(j\rightarrow i)}\right].$
 
 ### Continuous Synthesis
 
