@@ -1,7 +1,6 @@
 <div align="center">
 
-# MERGE
-### Multi-Expert Regimes Gaussian Ensemble
+# MERGE: Multi-Expert Regimes Gaussian Ensemble
 
 **Structure-aware trajectory synthesis from heterogeneous and imperfect demonstrations for high-speed autonomous racing.**
 
@@ -21,6 +20,10 @@
 **MERGE (Multi-Expert Regimes Gaussian Ensemble)** is an end-to-end framework for synthesizing safe, continuous, and dynamically consistent racing trajectories from heterogeneous, noisy, and potentially sub-optimal demonstrations.
 
 Rather than averaging demonstrations, MERGE treats them as **localized driving expertise** and selectively recombines the most useful behaviors across the track. Track geometry is decoupled from temporal execution, while spatial safety and transition feasibility are explicitly considered during trajectory synthesis.
+
+</br>
+<img width="6023" height="2327" alt="METHODLOGY_ICRA" src="https://github.com/user-attachments/assets/7e866aa8-5c17-4f96-b4eb-7fd6331ae83e" />
+</br>
 
 ## Repository Structure
 
