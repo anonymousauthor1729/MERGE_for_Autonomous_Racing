@@ -17,20 +17,49 @@
 
 ## Overview
 
-**MERGE (Multi-Expert Regimes Gaussian Ensemble)** is an end-to-end framework for synthesizing safe, continuous, and dynamically consistent racing trajectories from heterogeneous, noisy, and potentially sub-optimal demonstrations.
+**MERGE** is a trajectory-synthesis framework that recombines heterogeneous demonstrations into a single safe, continuous, and dynamically consistent trajectory.
 
-Rather than averaging demonstrations, MERGE treats them as **localized driving expertise** and selectively recombines the most useful behaviors across the track. Track geometry is decoupled from temporal execution, while spatial safety and transition feasibility are explicitly considered during trajectory synthesis.
+Instead of averaging conflicting demonstrations, MERGE:
+
+- aligns demonstrations by **spatial progress** rather than execution time;
+- discovers localized driving regimes from **cross-track variance**;
+- selects a globally consistent sequence of expert behaviors using **constraint-aware Dynamic Programming**;
+- smoothly blends neighboring experts using **GMM responsibilities**; and
+- produces a continuous trajectory for **simulation and physical F1TENTH deployment**.
+
+The complete methodology is summarized below.
 
 </br>
 <img width="6023" height="2327" alt="METHODLOGY_ICRA" src="https://github.com/user-attachments/assets/7e866aa8-5c17-4f96-b4eb-7fd6331ae83e" />
 </br>
 
-The pipeline used in the physical F1TENTH platform is shown below. The controller operates online while trajectory synthesis remains an offline optimization step. This separates the computationally heavier expert selection process from the high-frequency tracking loop. High speed real-time tracking is achieved using velocity scheduled Stanely Controller.
+---
+
+## Hardware Deployment
+
+MERGE trajectory synthesis is performed **offline**, while trajectory tracking runs online at the vehicle control rate. The hardware stack handles sensing, localization, trajectory projection, spline evaluation, control, and VESC actuation.
 
 </br>
 <img width="6023" height="2327" alt="HW_PIPIELINE_ICRA" src="https://github.com/user-attachments/assets/218cc677-771a-4828-9f6b-07e6940e176b" />
 </br>
 
+The physical deployment uses ROS 2 telemetry together with the vehicle's localization and state-estimation stack. The resulting continuous trajectory is tracked using a velocity-scheduled Stanley controller.
+
+---
+
+## Method at a Glance
+
+| Stage | Purpose | Main component |
+|---|---|---|
+| **Spatial alignment** | Remove differences in execution timing | Frenet re-parameterization |
+| **Regime discovery** | Identify localized driving behavior | Variance-aware GMM |
+| **Expert selection** | Find a globally feasible combination | Bellman Dynamic Programming |
+| **Trajectory synthesis** | Avoid discontinuous expert switching | Probabilistic blending |
+| **Execution** | Track the synthesized trajectory | Continuous splines + adaptive Stanley |
+
+The key optimization is performed **between neighboring operational regimes**, where candidate expert transitions are evaluated using spatial safety and switching-induced acceleration constraints.
+
+---
 
 ## Repository Structure
 
@@ -63,37 +92,27 @@ The pipeline used in the physical F1TENTH platform is shown below. The controlle
     └── trajectory_utils/            # Comparison metrics
 ```
 
----
+### Where to look
 
-## Module Overview
-
-### `MERGE_HARDWARE`
-
-Complete ROS 2 pipeline for physical deployment on a physical F1TENTH platform.
-
-- Converts and processes logged ROS 2 SQLite3 bags.
-- Uses `/amcl_pose` and `/odometry/filtered` telemetry.
-- Provides the real-time switching/tracking controller.
-- Uses low-latency ROS 2 QoS settings for communication with the vehicle/VESC through `/drive`.
-
-### `MERGE_SIMULATION`
-
-Simulation and verification environment built around the F1TENTH Gym ecosystem.
-
-- Supports multiple global racetracks, including Oschersleben and other standard F1TENTH maps.
-- Uses a dynamic single-track vehicle model.
-- Includes collision checking, friction parameterization, and tire-dynamics models.
-- Provides multi-lap evaluation and trajectory visualization.
-
-### `MERGE_VS_IMITATION_LEARNING`
-
-Benchmark suite for comparing MERGE with imitation-learning baselines: Behavior Cloning, ILEED and PACER.
+| Directory | Role |
+|---|---|
+| `MERGE_HARDWARE` | ROS 2 processing and physical F1TENTH deployment |
+| `MERGE_SIMULATION` | Dynamic simulation and multi-lap experiments |
+| `MERGE_VS_IMITATION_LEARNING` | Baseline comparison and evaluation |
 
 ---
 
-## State Representation
+## Data Representation
 
-All logged demonstrations and synthesized vehicle trajectories use the following **7-dimensional state**:
+Demonstrations are converted from time-indexed vehicle trajectories to a common spatial representation using normalized progress
+
+\[
+s \in [0,1].
+\]
+
+This separates **trajectory geometry** from the speed at which it was executed and enables different demonstrations to be compared and recombined at corresponding locations along the track.
+
+The vehicle state used throughout the logged demonstrations and synthesized trajectories is:
 
 | Index | Symbol | Description | Units |
 |:---:|:---:|---|:---:|
@@ -105,7 +124,38 @@ All logged demonstrations and synthesized vehicle trajectories use the following
 | 5 | $\dot{\psi}$ | Body-frame yaw rate | rad/s |
 | 6 | $\beta$ | Vehicle sideslip angle | rad |
 
-The synthesized reference is represented spatially as a function of progress $s$, enabling trajectory generation to be separated from execution timing.
+---
+
+## Implementation
+
+### `MERGE_HARDWARE`
+
+ROS 2 pipeline for physical F1TENTH experiments.
+
+- Processes logged ROS 2 SQLite3 bags.
+- Uses `/amcl_pose` and `/odometry/filtered` telemetry.
+- Provides the real-time switching/tracking controller.
+- Communicates with the vehicle through `/drive` using low-latency ROS 2 QoS settings.
+- Uses the F1TENTH vehicle dynamics and actuation configuration contained in `f1tenth_gym_model/`.
+
+### `MERGE_SIMULATION`
+
+Simulation and verification environment.
+
+- Supports F1TENTH racetracks including Oschersleben.
+- Uses a dynamic single-track vehicle model.
+- Includes collision checking and vehicle/tire-dynamics configuration.
+- Provides multi-lap execution and trajectory visualization.
+
+### `MERGE_VS_IMITATION_LEARNING`
+
+Evaluation suite for comparison against:
+
+- Behavioral Cloning (BC)
+- ILEED
+- PACER
+
+The benchmark utilities compute trajectory quality, constraint satisfaction, execution time, and reward-based metrics.
 
 ---
 
@@ -132,26 +182,24 @@ For ROS 2 bag processing:
 pip install rosbag2_py rosidl_runtime_py
 ```
 
-> **Note:** ROS 2 Python packages are normally installed through the corresponding ROS 2 distribution. Ensure your ROS 2 environment is sourced before running ROS-dependent modules.
+> **Note:** ROS 2 Python packages are normally installed through the corresponding ROS 2 distribution. Source the appropriate ROS 2 environment before running ROS-dependent modules.
 
 ---
 
 ## Quick Start
 
-### 1. Process Demonstration Bags
+### 1. Process Demonstrations
 
-Convert, align, and split multi-lap demonstrations into a unified Frenet representation:
+Convert and align the logged multi-expert demonstrations:
 
 ```bash
 cd MERGE_HARDWARE
 python3 data_extractor.py
 ```
 
-The processed demonstrations can then be supplied to the MERGE synthesis pipeline.
+This produces the processed trajectory representation used by the synthesis pipeline.
 
----
-
-### 2. Generate the Optimal Trajectory
+### 2. Generate a Trajectory
 
 ```python
 from MERGE_utils.handler import generate_opt_trajectory
@@ -173,43 +221,41 @@ optimal_trajectory = generate_opt_trajectory(
 )
 ```
 
-### Main synthesis parameters
+### Main parameters
 
 | Parameter | Description |
 |---|---|
 | `num_segs` | Number of GMM operational regimes |
 | `acceleration_max` | Maximum allowed acceleration |
 | `safety_width` | Lateral safety bound |
-| `safety_gain` | Weight controlling the spatial safety barrier |
+| `safety_gain` | Weight controlling the spatial safety objective |
 | `switch_gain` | Weight controlling transition/switching behavior |
 
-The exact values should be selected according to the track, vehicle configuration, and experimental setup.
+The values above reproduce the demonstrated example configuration; tune them according to the track and vehicle setup.
 
----
-
-### 3. Deploy on Hardware
-
-Launch the ROS 2 tracking node:
+### 3. Run the Hardware Controller
 
 ```bash
 ros2 run f1tenth_control switching_controller_node
 ```
 
-MERGE trajectory synthesis is performed offline. Online execution tracks the resulting continuous trajectory using the adaptive Stanley controller.
+Trajectory synthesis remains offline. The online node receives the vehicle state, evaluates the continuous reference, and tracks it through the adaptive Stanley controller.
 
 ---
 
 ## Evaluation
 
-MERGE can be evaluated against imitation-learning and model-based control baselines using:
+The repository contains simulation, hardware, and imitation-learning benchmark experiments.
 
-- **Lateral deviation** — adherence to the synthesized/reference racing line.
-- **Acceleration** — smoothness and actuation feasibility.
-- **Completion time** — execution efficiency.
-- **Constraint satisfaction** — percentage of trajectory samples satisfying prescribed limits.
-- **Total reward** — cumulative trajectory quality under the defined MERGE objective.
+| Metric | What it measures |
+|---|---|
+| **Lateral deviation** | Adherence to the synthesized/reference racing line |
+| **Acceleration** | Smoothness and actuation feasibility |
+| **Completion time** | Racing performance |
+| **Constraint satisfaction** | Fraction of trajectory samples within prescribed limits |
+| **Total reward** | Overall quality under the MERGE objective |
 
-The benchmark suite contains experiments designed to expose the failure modes of averaging-based imitation under heterogeneous demonstrations.
+The experiments are designed around a central failure mode of heterogeneous imitation: **combining demonstrations by averaging can destroy useful local behavior and violate trajectory constraints**. MERGE instead evaluates candidate expert transitions before constructing the final continuous trajectory.
 
 ---
 
@@ -226,8 +272,6 @@ If you use MERGE, its trajectory-synthesis pipeline, or the associated F1TENTH e
 }
 ```
 
-Relevant foundational work includes the F1TENTH platform, Stanley tracking, Gaussian mixture models, and Dynamic Programming.
-
 ---
 
 ## Acknowledgements
@@ -236,5 +280,3 @@ This project builds on the open-source F1TENTH ecosystem and related autonomous-
 
 ---
 -->
-
-</div>
