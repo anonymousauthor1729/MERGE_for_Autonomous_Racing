@@ -25,6 +25,13 @@ Rather than averaging demonstrations, MERGE treats them as **localized driving e
 <img width="6023" height="2327" alt="METHODLOGY_ICRA" src="https://github.com/user-attachments/assets/7e866aa8-5c17-4f96-b4eb-7fd6331ae83e" />
 </br>
 
+The pipeline used in the physical F1TENTH platform is shown below. The controller operates online while trajectory synthesis remains an offline optimization step. This separates the computationally heavier expert selection process from the high-frequency tracking loop. High speed real-time tracking is achieved using velocity scheduled Stanely Controller.
+
+</br>
+<img width="6023" height="2327" alt="HW_PIPIELINE_ICRA" src="https://github.com/user-attachments/assets/218cc677-771a-4828-9f6b-07e6940e176b" />
+</br>
+
+
 ## Repository Structure
 
 ```text
@@ -62,7 +69,7 @@ Rather than averaging demonstrations, MERGE treats them as **localized driving e
 
 ### `MERGE_HARDWARE`
 
-Complete ROS 2 pipeline for physical deployment.
+Complete ROS 2 pipeline for physical deployment on a physical F1TENTH platform.
 
 - Converts and processes logged ROS 2 SQLite3 bags.
 - Uses `/amcl_pose` and `/odometry/filtered` telemetry.
@@ -81,15 +88,6 @@ Simulation and verification environment built around the F1TENTH Gym ecosystem.
 ### `MERGE_VS_IMITATION_LEARNING`
 
 Benchmark suite for comparing MERGE with imitation-learning baselines: Behavior Cloning, ILEED and PACER.
-
-Evaluation includes:
-
-- Lap/completion time
-- Lateral deviation
-- Constraint violations
-- Acceleration
-- Cumulative reward
-- Behavior under heterogeneous demonstrations and distribution shift
 
 ---
 
@@ -201,58 +199,6 @@ MERGE trajectory synthesis is performed offline. Online execution tracks the res
 
 ---
 
-## Trajectory Synthesis Details
-
-### Spatial Representation
-
-Each demonstration is transformed from
-
-$\tau_i(t)$
-
-to a spatial representation
-
-$\tau_i(s)=\{X_i(s),v_i(s)\}, \qquad s\in[0,1].$
-
-This allows demonstrations with different speeds and execution times to be compared in a common spatial coordinate system.
-
-### GMM Regime Discovery
-
-MERGE constructs progress-dependent variance features and fits a $K$-component GMM. The posterior responsibility
-
-$\gamma_k(s) = \frac{\pi_k p(s|k)}{\sum_j\pi_jp(s|j)}$
-
-provides smooth regime membership and blending weights.
-
-### Dynamic Programming
-
-For consecutive regimes, MERGE evaluates transition-level spatial and acceleration rewards. Unsafe transitions are assigned a reward of $-\infty$, preventing them from entering the feasible DP solution.
-
-The optimal expert sequence is obtained through Bellman recursion:
-
-$DP(k,i)=\max_j\left[DP(k-1,j)+R_{e,k}^{(j\rightarrow i)}+R_{a,k}^{(j\rightarrow i)}\right].$
-
-### Continuous Synthesis
-
-The selected demonstrations are blended using the GMM responsibilities and subsequently represented by continuous splines for deployment.
-
----
-
-## Simulation
-
-The simulation pipeline is intended for controlled verification before hardware deployment.
-
-The simulation stack supports dynamic vehicle modeling, friction/tire parameterization, collision checking, and multi-lap evaluation.
-
----
-
-## Hardware Deployment
-
-MERGE has been deployed on a physical F1TENTH platform.
-
-The controller operates online while trajectory synthesis remains an offline optimization step. This separates the computationally heavier expert selection process from the high-frequency tracking loop.
-
----
-
 ## Evaluation
 
 MERGE can be evaluated against imitation-learning and model-based control baselines using:
@@ -289,9 +235,6 @@ Relevant foundational work includes the F1TENTH platform, Stanley tracking, Gaus
 This project builds on the open-source F1TENTH ecosystem and related autonomous-racing and trajectory-tracking research.
 
 ---
-
-<div align="center">
-
-**MERGE — From heterogeneous demonstrations to globally consistent, feasible racing trajectories.** -->
+-->
 
 </div>
