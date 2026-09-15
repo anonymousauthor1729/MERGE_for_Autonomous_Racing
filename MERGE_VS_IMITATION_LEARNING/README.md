@@ -1,0 +1,1 @@
+> **Note:** The trajectories shown in this repository were originally developed and visualized for the Franka platform, and have since been appropriately scaled and applied to F1TENTH vehicles. Please disregard the legends and platform-specific labels shown in the plots, as some may reflect the original Franka-based experiments.
